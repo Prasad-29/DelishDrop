@@ -1,14 +1,19 @@
-# Use official Java 17 base image
-FROM openjdk:17-jdk-slim
+FROM maven:3.9.4-eclipse-temurin-17 AS build
 
-# Set working directory inside container
 WORKDIR /app
 
-# Copy all project files into container
-COPY . .
+# Copy pom.xml and download dependencies first
+COPY pom.xml .
+RUN mvn dependency:go-offline
 
-# Build the project (skip tests for faster build)
-RUN ./mvnw clean package -DskipTests
+# Copy source code
+COPY src ./src
 
-# Run the JAR file
-CMD ["java", "-jar", "target/*.jar"]
+# Build app
+RUN mvn clean package -DskipTests
+
+# Run stage
+FROM openjdk:17-jdk-slim
+WORKDIR /app
+COPY --from=build /app/target/*.jar app.jar
+CMD ["java", "-jar", "app.jar"]
